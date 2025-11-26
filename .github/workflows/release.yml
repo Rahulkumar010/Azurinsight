@@ -40,11 +40,12 @@ jobs:
         npm install -g @vscode/vsce
         cd packages/extension
         vsce package
+        ls -la
 
     - name: Publish to VS Code Marketplace
       uses: HaaLeo/publish-vscode-extension@v1
       with:
         pat: ${{ secrets.VSCE_PAT }}
         registryUrl: https://marketplace.visualstudio.com
-        extensionFile: packages/extension/azurinsight-*.vsix
+        extensionFile: packages/extension/*.vsix
         packagePath: packages/extension
