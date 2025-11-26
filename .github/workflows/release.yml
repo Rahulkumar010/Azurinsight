@@ -44,8 +44,10 @@ jobs:
       run: npm install @rollup/rollup-linux-x64-gnu --no-save
 
     - name: Install Darwin Rollup Binding
-      if: runner.os == 'Darwin'
-      run: npm install @rollup/rollup-darwin-arm64 --no-save
+      if: runner.os == 'macOS'
+      run: |
+        npm install @rollup/rollup-darwin-x64 --no-save
+        npm install @rollup/rollup-darwin-arm64 --no-save
 
     - name: Build All Packages
       run: npm run build --workspaces
@@ -75,6 +77,8 @@ jobs:
         NODE_VERSION="v20.11.0"
         TARGET="${{ matrix.target }}"
         DEST="packages/extension/server/bin"
+        TEMP_DIR="temp_node"
+        mkdir -p $TEMP_DIR
         
         if [ "$TARGET" == "win32-x64" ]; then
           curl -L -o node.zip https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-win-x64.zip
@@ -82,18 +86,22 @@ jobs:
           rm node.zip
         elif [ "$TARGET" == "linux-x64" ]; then
           curl -L -o node.tar.gz https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-linux-x64.tar.gz
-          tar -xzf node.tar.gz -C $DEST --strip-components=2 "*/bin/node"
+          tar -xzf node.tar.gz -C $TEMP_DIR
+          cp $TEMP_DIR/node-$NODE_VERSION-linux-x64/bin/node $DEST/
           rm node.tar.gz
         elif [ "$TARGET" == "darwin-x64" ]; then
           curl -L -o node.tar.gz https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-darwin-x64.tar.gz
-          tar -xzf node.tar.gz -C $DEST --strip-components=2 "*/bin/node"
+          tar -xzf node.tar.gz -C $TEMP_DIR
+          cp $TEMP_DIR/node-$NODE_VERSION-darwin-x64/bin/node $DEST/
           rm node.tar.gz
         elif [ "$TARGET" == "darwin-arm64" ]; then
           curl -L -o node.tar.gz https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-darwin-arm64.tar.gz
-          tar -xzf node.tar.gz -C $DEST --strip-components=2 "*/bin/node"
+          tar -xzf node.tar.gz -C $TEMP_DIR
+          cp $TEMP_DIR/node-$NODE_VERSION-darwin-arm64/bin/node $DEST/
           rm node.tar.gz
         fi
         
+        rm -rf $TEMP_DIR
         chmod +x $DEST/node*
         ls -la $DEST
 
