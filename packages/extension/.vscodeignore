@@ -20,5 +20,7 @@ package-lock.json
 ../../.git
 ../../samples
 ../../node_modules
+../ui
+../server
 !server/**
 !ui/**
