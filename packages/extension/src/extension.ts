@@ -51,11 +51,29 @@ function startServer(context: vscode.ExtensionContext) {
     const serverPath = path.join(context.extensionPath, 'server');
     const scriptPath = path.join(serverPath, 'dist', 'index.js');
 
+    // Check for bundled Node.js binary
+    const platform = process.platform;
+    const nodeExecutable = platform === 'win32' ? 'node.exe' : 'node';
+    const bundledNodePath = path.join(serverPath, 'bin', nodeExecutable);
+
+    let command = 'node';
+    if (fs.existsSync(bundledNodePath)) {
+        command = bundledNodePath;
+        outputChannel.appendLine(`Using bundled Node.js: ${command}`);
+    } else {
+        outputChannel.appendLine('Using system Node.js');
+    }
+
     outputChannel.appendLine(`Starting server from: ${scriptPath}`);
 
-    serverProcess = cp.spawn('node', [scriptPath], {
+    serverProcess = cp.spawn(command, [scriptPath], {
         cwd: serverPath,
         env: { ...process.env, PORT: '5000' } // Default port
+    });
+
+    serverProcess.on('error', (err) => {
+        outputChannel.appendLine(`[Server Spawn Error]: ${err.message}`);
+        vscode.window.showErrorMessage(`Failed to start server: ${err.message}`);
     });
 
     serverProcess.stdout?.on('data', (data) => {

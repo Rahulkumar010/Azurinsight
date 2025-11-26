@@ -43,6 +43,10 @@ jobs:
       if: runner.os == 'Linux'
       run: npm install @rollup/rollup-linux-x64-gnu --no-save
 
+    - name: Install Darwin Rollup Binding
+      if: runner.os == 'Darwin'
+      run: npm install @rollup/rollup-darwin-arm64 --no-save
+
     - name: Build All Packages
       run: npm run build --workspaces
 
@@ -59,10 +63,39 @@ jobs:
       shell: bash
       run: |
         mkdir -p packages/extension/server/dist
+        mkdir -p packages/extension/server/bin
         cp -r packages/server/dist/* packages/extension/server/dist/
         cp packages/server/package.json packages/extension/server/
         cd packages/extension/server
         npm install --omit=dev --os=${{ matrix.npm_os }} --cpu=${{ matrix.npm_cpu }}
+
+    - name: Download Node.js Binary
+      shell: bash
+      run: |
+        NODE_VERSION="v20.11.0"
+        TARGET="${{ matrix.target }}"
+        DEST="packages/extension/server/bin"
+        
+        if [ "$TARGET" == "win32-x64" ]; then
+          curl -L -o node.zip https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-win-x64.zip
+          unzip -j node.zip "*/node.exe" -d $DEST
+          rm node.zip
+        elif [ "$TARGET" == "linux-x64" ]; then
+          curl -L -o node.tar.gz https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-linux-x64.tar.gz
+          tar -xzf node.tar.gz -C $DEST --strip-components=2 "*/bin/node"
+          rm node.tar.gz
+        elif [ "$TARGET" == "darwin-x64" ]; then
+          curl -L -o node.tar.gz https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-darwin-x64.tar.gz
+          tar -xzf node.tar.gz -C $DEST --strip-components=2 "*/bin/node"
+          rm node.tar.gz
+        elif [ "$TARGET" == "darwin-arm64" ]; then
+          curl -L -o node.tar.gz https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-darwin-arm64.tar.gz
+          tar -xzf node.tar.gz -C $DEST --strip-components=2 "*/bin/node"
+          rm node.tar.gz
+        fi
+        
+        chmod +x $DEST/node*
+        ls -la $DEST
 
     - name: Package Extension
       shell: bash
