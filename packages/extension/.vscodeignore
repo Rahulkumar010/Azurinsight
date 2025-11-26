@@ -13,5 +13,10 @@ package-lock.json
 ../../README.md
 ../../CONTRIBUTING.md
 ../../MARKETPLACE.md
+../../.npmignore
+../../.gitignore
+../../.gitattributes
+../../.github
+../../.git
 !server/**
 !ui/**
