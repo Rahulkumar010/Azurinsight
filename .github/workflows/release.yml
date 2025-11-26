@@ -32,6 +32,12 @@ jobs:
         mv index-*.js index.js
         mv index-*.css index.css
 
+    - name: Package Extension
+      run: |
+        npm install -g @vscode/vsce
+        cd packages/extension
+        vsce package
+
     - name: Publish to VS Code Marketplace
       uses: HaaLeo/publish-vscode-extension@v1
       with:
