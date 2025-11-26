@@ -6,7 +6,27 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: win32-x64
+            os: windows-latest
+            npm_os: win32
+            npm_cpu: x64
+          - target: linux-x64
+            os: ubuntu-latest
+            npm_os: linux
+            npm_cpu: x64
+          - target: darwin-x64
+            os: macos-latest
+            npm_os: darwin
+            npm_cpu: x64
+          - target: darwin-arm64
+            os: macos-latest
+            npm_os: darwin
+            npm_cpu: arm64
+
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
 
@@ -20,14 +40,14 @@ jobs:
       run: npm ci
 
     - name: Install Linux Rollup Binding
+      if: runner.os == 'Linux'
       run: npm install @rollup/rollup-linux-x64-gnu --no-save
 
     - name: Build All Packages
       run: npm run build --workspaces
 
     - name: Prepare UI Assets
-      # Manually copy and rename assets as done in local build
-      # This ensures the extension package has the correct UI files
+      shell: bash
       run: |
         mkdir -p packages/extension/ui/assets
         cp -r packages/ui/dist/* packages/extension/ui/
@@ -36,19 +56,20 @@ jobs:
         mv index-*.css index.css
     
     - name: Prepare Server Assets
-      # Manually copy and rename assets as done in local build
-      # This ensures the extension package has the correct Server files
+      shell: bash
       run: |
-        mkdir -p packages/extension/server/dist/routes
-        cp -r packages/server/dist/* packages/extension/server/
+        mkdir -p packages/extension/server/dist
+        cp -r packages/server/dist/* packages/extension/server/dist/
+        cp packages/server/package.json packages/extension/server/
         cd packages/extension/server
-        npm install
+        npm install --omit=dev --os=${{ matrix.npm_os }} --cpu=${{ matrix.npm_cpu }}
 
     - name: Package Extension
+      shell: bash
       run: |
         npm install -g @vscode/vsce
         cd packages/extension
-        vsce package
+        vsce package --target ${{ matrix.target }}
         ls -la
 
     - name: Publish to VS Code Marketplace
@@ -56,5 +77,5 @@ jobs:
       with:
         pat: ${{ secrets.VSCE_PAT }}
         registryUrl: https://marketplace.visualstudio.com
-        extensionFile: packages/extension/azurinsight-1.0.0.vsix
+        extensionFile: packages/extension/azurinsight-*.vsix
         packagePath: packages/extension
