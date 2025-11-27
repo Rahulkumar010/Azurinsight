@@ -118,7 +118,8 @@ jobs:
       id: vsix_name
       shell: bash
       run: |
-        VSIX_FILE=$(find packages/extension -name "*.vsix" -type f -printf "%f\n" | head -n 1)
+        VSIX_PATH=$(find packages/extension -name "*.vsix" -type f | head -n 1)
+        VSIX_FILE=$(basename "$VSIX_PATH")
         echo "vsix_filename=$VSIX_FILE" >> $GITHUB_OUTPUT
         echo "Found VSIX: $VSIX_FILE"
 
