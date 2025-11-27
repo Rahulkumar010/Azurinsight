@@ -46,8 +46,8 @@ jobs:
     - name: Install Darwin Rollup Binding
       if: runner.os == 'macOS'
       run: |
-        npm install @rollup/rollup-darwin-x64 --no-save
-        npm install @rollup/rollup-darwin-arm64 --no-save
+        npm install @rollup/rollup-darwin-x64 --no-save --force
+        npm install @rollup/rollup-darwin-arm64 --no-save --force
 
     - name: Build All Packages
       run: npm run build --workspaces
@@ -69,7 +69,7 @@ jobs:
         cp -r packages/server/dist/* packages/extension/server/dist/
         cp packages/server/package.json packages/extension/server/
         cd packages/extension/server
-        npm install --omit=dev --os=${{ matrix.npm_os }} --cpu=${{ matrix.npm_cpu }}
+        npm install --os=${{ matrix.npm_os }} --cpu=${{ matrix.npm_cpu }}
 
     - name: Download Node.js Binary
       shell: bash
