@@ -6,6 +6,7 @@ on:
 
 jobs:
   build:
+    name: Build ${{ matrix.target }}
     strategy:
       matrix:
         include:
@@ -74,7 +75,7 @@ jobs:
     - name: Download Node.js Binary
       shell: bash
       run: |
-        NODE_VERSION="v20.11.0"
+        NODE_VERSION="v24.11.1"
         TARGET="${{ matrix.target }}"
         DEST="packages/extension/server/bin"
         TEMP_DIR="temp_node"
@@ -113,18 +114,55 @@ jobs:
         vsce package --target ${{ matrix.target }}
         ls -la
 
-    - name: Get VSIX Path
-      id: get_vsix_path
+    - name: Get VSIX Filename
+      id: vsix_name
       shell: bash
       run: |
-        VSIX_PATH=$(find packages/extension -name "azurinsight-${{ matrix.target }}*.vsix" -type f | head -n 1)
-        echo "Found VSIX at: $VSIX_PATH"
-        echo "vsix_path=$VSIX_PATH" >> $GITHUB_OUTPUT
+        VSIX_FILE=$(find packages/extension -name "*.vsix" -type f -printf "%f\n" | head -n 1)
+        echo "vsix_filename=$VSIX_FILE" >> $GITHUB_OUTPUT
+        echo "Found VSIX: $VSIX_FILE"
+
+    - name: Upload VSIX Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.vsix_name.outputs.vsix_filename }}
+        path: packages/extension/*.vsix
+        retention-days: 1
+
+  publish:
+    name: Publish to Marketplace
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        target: [win32-x64, linux-x64, darwin-x64, darwin-arm64]
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Get Version
+      id: version
+      run: echo "version=$(node -p "require('./packages/extension/package.json').version")" >> $GITHUB_OUTPUT
+
+    - name: Download VSIX
+      uses: actions/download-artifact@v4
+      with:
+        name: azurinsight-${{ matrix.target }}-${{ steps.version.outputs.version }}.vsix
+        path: ./vsix
+
+    - name: Get VSIX Path
+      id: get_vsix
+      shell: bash
+      run: |
+        VSIX_FILE=$(find ./vsix -name "azurinsight-${{ matrix.target }}*.vsix" -type f | head -n 1)
+        echo "vsix_file=$VSIX_FILE" >> $GITHUB_OUTPUT
+        echo "Found VSIX: $VSIX_FILE"
 
     - name: Publish to VS Code Marketplace
       uses: HaaLeo/publish-vscode-extension@v1
       with:
         pat: ${{ secrets.VSCE_PAT }}
         registryUrl: https://marketplace.visualstudio.com
-        extensionFile: ${{ steps.get_vsix_path.outputs.vsix_path }}
-        packagePath: packages/extension
+        extensionFile: ${{ steps.get_vsix.outputs.vsix_file }}
+        packagePath: ./vsix
