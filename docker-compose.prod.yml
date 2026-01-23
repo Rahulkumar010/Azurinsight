@@ -1,0 +1,6 @@
+# Production override - pulls from Docker Hub instead of building locally
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+services:
+  azurinsight:
+    build: null  # Disable local build
+    image: oobdev/azurinsight:latest

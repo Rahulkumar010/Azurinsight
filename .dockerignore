@@ -1,0 +1,53 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Build outputs
+dist
+out
+*.vsix
+*.tgz
+
+# Development files
+.git
+.gitignore
+.github
+.vscode
+.editorconfig
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.pem
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea
+*.swp
+*.swo
+*~
+
+# Test coverage
+coverage
+.nyc_output
+
+# Logs
+logs
+*.log
+
+# Documentation
+*.md
+!README.md
+
+# CI/CD
+.github/workflows
+
+# Extension and UI packages (not needed for server-only build)
+packages/extension
+packages/ui
