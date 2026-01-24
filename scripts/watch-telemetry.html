@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azurinsight - Live Telemetry Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #4ec9b0;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .status.connected {
+            background: #0e6027;
+            color: #4ec9b0;
+        }
+
+        .status.disconnected {
+            background: #5a1d1d;
+            color: #f48771;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #1177bb;
+        }
+
+        button.danger {
+            background: #a1260d;
+        }
+
+        button.danger:hover {
+            background: #c72e0f;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #252526;
+            border: 1px solid #3e3e42;
+            border-radius: 6px;
+            padding: 15px;
+        }
+
+        .stat-label {
+            color: #858585;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #4ec9b0;
+        }
+
+        .telemetry-list {
+            background: #252526;
+            border: 1px solid #3e3e42;
+            border-radius: 6px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .telemetry-item {
+            border-bottom: 1px solid #3e3e42;
+            padding: 15px;
+            transition: background 0.2s;
+        }
+
+        .telemetry-item:hover {
+            background: #2d2d30;
+        }
+
+        .telemetry-item:last-child {
+            border-bottom: none;
+        }
+
+        .telemetry-item.new {
+            animation: highlight 1s ease-out;
+        }
+
+        @keyframes highlight {
+            0% { background: #0e639c; }
+            100% { background: transparent; }
+        }
+
+        .telemetry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .telemetry-type {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .type-Message { background: #0e639c; color: white; }
+        .type-Event { background: #4ec9b0; color: black; }
+        .type-Exception { background: #f48771; color: black; }
+        .type-Request { background: #dcdcaa; color: black; }
+        .type-Dependency { background: #c586c0; color: black; }
+        .type-Metric { background: #9cdcfe; color: black; }
+
+        .telemetry-time {
+            color: #858585;
+            font-size: 12px;
+        }
+
+        .telemetry-name {
+            color: #4ec9b0;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .telemetry-message {
+            color: #d4d4d4;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .telemetry-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background: #1e1e1e;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            color: #858585;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #858585;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Azurinsight - Live Telemetry Viewer</h1>
+        <div class="status disconnected" id="status">Disconnected</div>
+
+        <div class="controls">
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()">Disconnect</button>
+            <button class="danger" onclick="clearTelemetry()">Clear Display</button>
+            <button onclick="sendTest()">Send Test Event</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-label">Total Events</div>
+                <div class="stat-value" id="totalCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Messages</div>
+                <div class="stat-value" id="messageCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Events</div>
+                <div class="stat-value" id="eventCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Exceptions</div>
+                <div class="stat-value" id="exceptionCount">0</div>
+            </div>
+        </div>
+
+        <div class="telemetry-list" id="telemetryList">
+            <div class="empty-state">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+                </svg>
+                <div>Waiting for telemetry events...</div>
+                <div style="margin-top: 10px; font-size: 12px;">
+                    Send telemetry to: <code style="background: #1e1e1e; padding: 2px 6px; border-radius: 3px;">http://localhost:5000/v2.1/track</code>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let telemetryItems = [];
+        let stats = { total: 0, Message: 0, Event: 0, Exception: 0, Request: 0, Dependency: 0, Metric: 0 };
+
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log('Already connected');
+                return;
+            }
+
+            ws = new WebSocket('ws://localhost:5000');
+
+            ws.onopen = () => {
+                console.log('Connected to Azurinsight WebSocket');
+                document.getElementById('status').textContent = 'Connected';
+                document.getElementById('status').className = 'status connected';
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const item = JSON.parse(event.data);
+                    addTelemetryItem(item);
+                } catch (e) {
+                    console.error('Error parsing telemetry:', e);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+
+            ws.onclose = () => {
+                console.log('Disconnected from Azurinsight WebSocket');
+                document.getElementById('status').textContent = 'Disconnected';
+                document.getElementById('status').className = 'status disconnected';
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function addTelemetryItem(item) {
+            telemetryItems.unshift(item);
+            if (telemetryItems.length > 100) {
+                telemetryItems = telemetryItems.slice(0, 100);
+            }
+
+            const type = item.data?.baseType?.replace('Data', '') || 'unknown';
+            stats.total++;
+            stats[type] = (stats[type] || 0) + 1;
+
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const listEl = document.getElementById('telemetryList');
+
+            if (telemetryItems.length === 0) {
+                listEl.innerHTML = `
+                    <div class="empty-state">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+                        </svg>
+                        <div>Waiting for telemetry events...</div>
+                        <div style="margin-top: 10px; font-size: 12px;">
+                            Send telemetry to: <code style="background: #1e1e1e; padding: 2px 6px; border-radius: 3px;">http://localhost:5000/v2.1/track</code>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = telemetryItems.map(item => {
+                const type = item.data?.baseType?.replace('Data', '') || 'unknown';
+                const message = item.data?.baseData?.message || item.data?.baseData?.name || '';
+                const tags = item.tags || {};
+                const time = new Date(item.time).toLocaleString();
+
+                return `
+                    <div class="telemetry-item new">
+                        <div class="telemetry-header">
+                            <span class="telemetry-type type-${type}">${type}</span>
+                            <span class="telemetry-time">${time}</span>
+                        </div>
+                        <div class="telemetry-name">${item.name || 'Unnamed Event'}</div>
+                        ${message ? `<div class="telemetry-message">${message}</div>` : ''}
+                        <div class="telemetry-tags">
+                            ${Object.entries(tags).map(([k, v]) => `<span class="tag">${k}: ${v}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Update stats
+            document.getElementById('totalCount').textContent = stats.total;
+            document.getElementById('messageCount').textContent = stats.Message || 0;
+            document.getElementById('eventCount').textContent = stats.Event || 0;
+            document.getElementById('exceptionCount').textContent = stats.Exception || 0;
+        }
+
+        function clearTelemetry() {
+            telemetryItems = [];
+            stats = { total: 0, Message: 0, Event: 0, Exception: 0, Request: 0, Dependency: 0, Metric: 0 };
+            updateDisplay();
+        }
+
+        function sendTest() {
+            fetch('http://localhost:5000/v2.1/track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: 'Microsoft.ApplicationInsights.Event',
+                    time: new Date().toISOString(),
+                    iKey: 'test-key',
+                    tags: {
+                        'ai.cloud.role': 'live-viewer',
+                        'ai.device.type': 'Browser'
+                    },
+                    data: {
+                        baseType: 'EventData',
+                        baseData: {
+                            name: 'TestEvent',
+                            properties: {
+                                source: 'Live Viewer',
+                                timestamp: new Date().toISOString()
+                            }
+                        }
+                    }
+                })
+            })
+            .then(r => r.json())
+            .then(data => console.log('Test event sent:', data))
+            .catch(err => console.error('Error sending test:', err));
+        }
+
+        // Auto-connect on load
+        connect();
+    </script>
+</body>
+</html>
