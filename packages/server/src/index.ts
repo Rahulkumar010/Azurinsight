@@ -1,6 +1,7 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
+import { gunzipSync } from 'zlib';
 import { initDB } from './db';
 import { ingestionRouter, setBroadcastCallback } from './routes/ingestion';
 import { queryRouter } from './routes/query';
@@ -11,6 +12,56 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
+
+// Gzip decompression middleware - MUST come before body parser
+// Application Insights SDK sends telemetry with content-encoding: gzip
+app.use((req, res, next) => {
+    const encoding = req.headers['content-encoding'];
+
+    if (encoding === 'gzip') {
+        const chunks: Buffer[] = [];
+
+        req.on('data', (chunk: Buffer) => {
+            chunks.push(chunk);
+        });
+
+        req.on('end', () => {
+            try {
+                const buffer = Buffer.concat(chunks);
+                const decompressed = gunzipSync(buffer);
+                const jsonString = decompressed.toString('utf8');
+
+                // Application Insights sends newline-delimited JSON (NDJSON)
+                // Parse each line as a separate JSON object
+                const lines = jsonString.trim().split('\n').filter(line => line.trim().length > 0);
+
+                if (lines.length === 1) {
+                    // Single JSON object
+                    req.body = JSON.parse(lines[0]);
+                } else {
+                    // Multiple JSON objects - parse each line
+                    req.body = lines.map(line => JSON.parse(line));
+                }
+
+                // Remove content-encoding header so body-parser doesn't try to process it
+                delete req.headers['content-encoding'];
+
+                next();
+            } catch (err) {
+                console.error('Error decompressing gzip data:', err);
+                res.status(400).json({
+                    itemsReceived: 0,
+                    itemsAccepted: 0,
+                    errors: [{ message: 'Failed to decompress or parse request body' }]
+                });
+            }
+        });
+    } else {
+        // Not gzipped, let body-parser handle it
+        next();
+    }
+});
+
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
 
